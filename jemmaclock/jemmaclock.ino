@@ -170,19 +170,19 @@ namespace Adafruit {
 
 // the first byte (address 0) of the EEPROM
 // EEPROM addresses, 0 to 255
-static int eepromAddress0 = 0; // first run?
+static byte eepromAddress0 = 0; // first run?
 byte eepromDefaultsExist;
-static int eepromAddress1 = 1; // timezone
+static byte eepromAddress1 = 1; // timezone
 byte eepromTimeZone;
-static int eepromAddress2 = 2; // daylight time
+static byte eepromAddress2 = 2; // daylight time
 byte eepromDaylightTime;
-static int eepromAddress3 = 3; // brightness
+static byte eepromAddress3 = 3; // brightness
 byte eepromBrightness;
-static int eepromAddress4 = 4; // 24 hour (0) or 12 hour (1)
+static byte eepromAddress4 = 4; // 24 hour (0) or 12 hour (1)
 byte eepromTimeFormat;
-static int eepromAddress5 = 5; // 2014-12-25 (0), 12/25/2014 (1), 25/12/2014 (2) 
+static byte eepromAddress5 = 5; // 2014-12-25 (0), 12/25/2014 (1), 25/12/2014 (2) 
 byte eepromDateFormat;
-static int eepromAddress6 = 6; // slide left to right (0), bounce left or right (1)
+static byte eepromAddress6 = 6; // slide left to right (0), bounce left or right (1)
 byte eepromClockFormat;
 
 byte statConfMenu = 0; // status: are we displaying configuration menu?
@@ -191,8 +191,8 @@ int switchConfMenu = A0;             // flip to enter Configuration menu
 int switchDaylightTime = A1;                   // flip to enable Daylight Time
 //A2 unused
 // A4 and A5 for i2c
-int potentiometerTimezone = 6;     //  input pin for the TimeZone potentiometer
-int potentiometerBrightness = 7;   // input pin for the Brightness potentiometer
+byte potentiometerTimezone = 6;     //  input pin for the TimeZone potentiometer
+byte potentiometerBrightness = 7;   // input pin for the Brightness potentiometer
 #define ANTENNALED 4;
 //int nmeaRx = 2;
 
@@ -213,7 +213,7 @@ byte satellitesInView = 0;
 // likely to occur is in sections of code associated with interrupts, called
 // an interrupt service routine."
 
-volatile int pps_loop =0;
+volatile byte pps_loop = 0;
 void pps_interrupt(){
   // if we're not in the configuration menu and we have a good fix,
   if ( (!statConfMenu) && (gps.time.isValid()) )   {
