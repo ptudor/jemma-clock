@@ -8,7 +8,7 @@ An Arduino based Pulse-Per-Second clock with Time Zones and Daylight Time suppor
 ### Time
 Time, by Michael Margolis, adds timekeeping ability in hours, minutes, seconds, days, months and years.
 [Time.zip](http://www.pjrc.com/teensy/arduino_libraries/Time.zip)
-[Documentation])http://www.pjrc.com/teensy/td_libs_Time.html)
+[Documentation](http://www.pjrc.com/teensy/td_libs_Time.html)
 
 ### TinyGPS++
 A Full-featured GPS/NMEA Parser for Arduino
