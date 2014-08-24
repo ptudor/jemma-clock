@@ -183,13 +183,14 @@ byte eepromTimeFormat;
 static byte eepromAddress5 = 5; // 2014-12-25 (0), 12/25/2014 (1), 25/12/2014 (2) 
 byte eepromDateFormat;
 static byte eepromAddress6 = 6; // slide left to right (0), bounce left or right (1)
-byte eepromClockFormat;
+byte eepromClockDisplayFormat;
 
 byte statConfMenu = 0; // status: are we displaying configuration menu?
 
-int switchConfMenu = A0;             // flip to enter Configuration menu
-int switchDaylightTime = A1;                   // flip to enable Daylight Time
-//A2 unused
+int switchConfMenu = A0;            // flip to enter Configuration menu
+int switchDaylightTime = A1;        // flip to enable Daylight Time
+int switchTwelveHour = A2;               // open for 12 hour time, jumpered for normal time.
+int switchDebug = A3;
 // A4 and A5 for i2c
 byte potentiometerTimezone = 6;     //  input pin for the TimeZone potentiometer
 byte potentiometerBrightness = 7;   // input pin for the Brightness potentiometer
@@ -310,8 +311,8 @@ void printTime(time_t currentEpochTime) {
   // make the text string object
   char szBuf[sizeBuf+1];
 
-  int enable12 = getTimeFormat() ;
-  int adjustedHour;
+  byte enable12 = getTimeFormat() ;
+  byte adjustedHour;
   if (enable12) {
     // convert 24-hour to 12-hour format
     adjustedHour = ((tm2.Hour + 11) % 12 + 1);
@@ -319,7 +320,7 @@ void printTime(time_t currentEpochTime) {
     adjustedHour = tm2.Hour;
   }
 
-  if (getClockFormat() == 1) {
+  if (getClockDisplayStyle() == 1) {
     // here we shift the clock for the top or bottom of the hour.          
     // you could switch it hourly with "tm.Hour % 2;"
     byte topOfTheHour = tm2.Minute < 30;
@@ -517,7 +518,7 @@ byte getDateFormat() {
  return EEPROM.read(eepromAddress5);
 }
 
-byte getClockFormat() {
+byte getClockDisplayStyle() {
  return EEPROM.read(eepromAddress6);
 }
 
@@ -543,11 +544,13 @@ void displayUptime() {
   byte seconds = (currentTime)%60;
   byte minutes = ((currentTime)%3600)/60;
   byte hours = ((currentTime)%86400)/3600;
-  byte days = ((currentTime)%2592000)/86400;
+  //byte days = ((currentTime)%2592000)/86400;
+  byte days = floor(currentTime / (60 * 60 * 24) ); 
 
   char szBuf[sizeBuf+1];
-  //snprintf(szBuf, sizeBuf, "Up: %02dd,%02d:%02d:%02d", days, hours, minutes, seconds);
-  snprintf(szBuf, sizeBuf, "Uptime: %02d:%02d:%02d", hours, minutes, seconds);
+  // rolls over around 50 days.
+  snprintf(szBuf, sizeBuf, "Up:  %02d,%02d:%02d:%02d", days, hours, minutes, seconds);
+  //snprintf(szBuf, sizeBuf, "Uptime: %02d:%02d:%02d", hours, minutes, seconds);
   updateLcdText( 1,szBuf); 
 }
 
@@ -555,7 +558,7 @@ void eepromCreateDefaults() {
   eepromDefaultsExist = 1; //anything but zero
   eepromTimeZone = 8 ; // number from array of defined timezones
   eepromDaylightTime = 0; // "no" is a fine default
-  eepromTimeFormat = 0; // 23:11:59
+  eepromTimeFormat = 1; // 23:11:59
   eepromDateFormat = 0; // 2014-12-25
   EEPROM.write(eepromAddress0, eepromDefaultsExist);
   EEPROM.write(eepromAddress1, eepromTimeZone);
@@ -648,6 +651,8 @@ void setup() {
   digitalWrite(switchConfMenu, HIGH); // set pullup
   pinMode(switchDaylightTime, INPUT);
   digitalWrite(switchDaylightTime, HIGH); // set pullup
+  pinMode(switchTwelveHour, INPUT);
+  digitalWrite(switchTwelveHour, HIGH); // set pullup
 
   // this RGB LCD is 16 columns, 2 rows
   lcd.begin(16, 2);
@@ -681,6 +686,10 @@ void setup() {
   // fetch the timezone and daylight time settings
   daylightTimeOffset = getDaylightTimeOffset() ;
   timeZoneOffset = getTimeZoneOffset() ;
+
+  //byte enable12 = getTimeFormat();
+  byte enable12 = readSwitch(switchTwelveHour);
+  saveSettings(eepromAddress4, enable12);
 
   // long enough to get a nmea sentence maybe
   TinyGpsPlusPlus::smartDelay(1000); 
