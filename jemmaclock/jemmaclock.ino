@@ -8,9 +8,9 @@ https://www.gemmagps.com/clock/
 
 */
 
-#define JEMMA_VERSION "Jemma Clock v1.0"
+#define JEMMA_VERSION "Jemma Clock v1.1"
 #define JEMMA_COPYRIGHT "(c)Patrick Tudor"
-#define DEBUG 1
+#define DEBUG 0
 
 #ifndef _HEADERS_JEMMA
 #define _HEADERS_JEMMA
@@ -23,6 +23,23 @@ https://www.gemmagps.com/clock/
 #include "freeram.h"
 
 #endif
+
+#define PCB01 0
+#define PCB04 0
+#define PCB10 1
+
+/* 
+ * http://a-control.de/arduino-fehler/?lang=en
+ * BOF preprocessor bug prevent
+ * insert me on top of your arduino-code
+ */
+#define nop() __asm volatile ("nop")
+#if 1
+nop();
+#endif
+/*
+ * EOF preprocessor bug prevent
+*/
 
 // list of timezones
 // http://en.wikipedia.org/wiki/List_of_UTC_time_offsets
@@ -101,11 +118,28 @@ unsigned long satSearchTime;
  * LCD R/W pin to ground
  * pot to LCD VO pin (pin 3)
 */
-LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
 
 #define REDLCDLED 3
 #define GREENLCDLED 5
 #define BLUELCDLED 6
+
+#if PCB01
+  LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
+#endif
+
+#if PCB04
+  LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
+#endif
+
+// RS=4, En=6, db4=11, db5=12, db6=13, db7=14
+// 
+#if PCB10 
+  LiquidCrystal lcd(4, 7, 8, 10, 11, 12); //D8
+#define REDLCDLED 5
+#define GREENLCDLED 6
+#define BLUELCDLED 9
+#endif
+
 
 #define REDCOLOR 1
 #define GREENCOLOR 2
@@ -124,7 +158,7 @@ TinyGPSCustom antenna(gps, "PGTOP", 2); // $PGTOP sentence, 2nd element
 #define PA6H_MESSAGES_DEFAULT "$PMTK314,-1*04"
 #define PA6H_MESSAGES "$PMTK314,3,1,3,1,2,6,0,0,0,0,0,0,0,0,0,0,0,0,0*2C"
 #define PA6H_ANTENNA_STATUS "$PGCMD,33,1*6C" 
-static const uint32_t GPSBaud = 9600;
+static const uint16_t GPSBaud = 9600;
 
 
 namespace TinyGpsPlusPlus {
@@ -185,16 +219,20 @@ byte eepromDateFormat;
 static byte eepromAddress6 = 6; // slide left to right (0), bounce left or right (1)
 byte eepromClockDisplayFormat;
 
-byte statConfMenu = 0; // status: are we displaying configuration menu?
+volatile bool statConfMenu = 0; // status: are we displaying configuration menu?
 
-int switchConfMenu = A0;            // flip to enter Configuration menu
-int switchDaylightTime = A1;        // flip to enable Daylight Time
+int switchConfMenu = 3;            // flip to enter Configuration menu; before 010 A0
+int switchDaylightTime = A3;        // flip to enable Daylight Time ; before 010 A1
 int switchTwelveHour = A2;               // open for 12 hour time, jumpered for normal time.
 int switchDebug = A3;
 // A4 and A5 for i2c
-byte potentiometerTimezone = 6;     //  input pin for the TimeZone potentiometer
+byte potentiometerTimezone = 0;     //  input pin for the TimeZone potentiometer // was 6 pre 010
 byte potentiometerBrightness = 7;   // input pin for the Brightness potentiometer
+
+#define ANTENNALED A1;
+#if PCB04
 #define ANTENNALED 4;
+#endif
 //int nmeaRx = 2;
 
 const size_t sizeBuf = 17; // default size buffer for 16 character per line LCD
@@ -250,6 +288,9 @@ void pps_interrupt(){
   }
 }
 
+void conf_interrupt(){
+  statConfMenu = !statConfMenu;
+}
 
 time_t epochConverter(TinyGPSDate &d, TinyGPSTime &t) {
   // make the object we'll use
@@ -648,11 +689,11 @@ void setup() {
 
   // switches
   pinMode(switchConfMenu, INPUT);
-  digitalWrite(switchConfMenu, HIGH); // set pullup
+  //digitalWrite(switchConfMenu, HIGH); // set pullup
   pinMode(switchDaylightTime, INPUT);
-  digitalWrite(switchDaylightTime, HIGH); // set pullup
+  //digitalWrite(switchDaylightTime, HIGH); // set pullup
   pinMode(switchTwelveHour, INPUT);
-  digitalWrite(switchTwelveHour, HIGH); // set pullup
+  //digitalWrite(switchTwelveHour, HIGH); // set pullup
 
   // this RGB LCD is 16 columns, 2 rows
   lcd.begin(16, 2);
@@ -668,13 +709,15 @@ void setup() {
   //#else
 
   Serial.begin(GPSBaud); 
-  if (GPS_PA6H) {
+//  if (GPS_PA6H) {
+    #if GPS_PA6H
     Serial.println(PA6H_MESSAGES_DEFAULT);
     delay(100);
     Serial.println(PA6H_MESSAGES);
     delay(100);
     Serial.println(PA6H_ANTENNA_STATUS);  //softwareserial
-  }
+    #endif
+//  }
 
   // check to see if this is the first run
   eepromDefaultsExist = EEPROM.read(eepromAddress0);
@@ -703,6 +746,7 @@ void setup() {
   
   // begin listening for PPS
   attachInterrupt(0, pps_interrupt, RISING);
+  attachInterrupt(1, conf_interrupt, RISING);
 }
 
 void loop(){
@@ -710,7 +754,7 @@ void loop(){
   antennaStatus = atoi(antenna.value());
 
   // this section is about setting configuration items.
-  statConfMenu = readSwitch(switchConfMenu) ;
+  //statConfMenu = readSwitch(switchConfMenu) ;
   
   // if we go into config mode, everything else gets paused effectively. no nmea read, etc.
   if (statConfMenu) {
