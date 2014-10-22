@@ -27,6 +27,7 @@ https://www.gemmagps.com/clock/
 #define PCB01 0
 #define PCB04 0
 #define PCB10 1
+#define PCB11 0
 
 /* 
  * http://a-control.de/arduino-fehler/?lang=en
@@ -119,16 +120,19 @@ unsigned long satSearchTime;
  * pot to LCD VO pin (pin 3)
 */
 
-#define REDLCDLED 3
-#define GREENLCDLED 5
-#define BLUELCDLED 6
 
 #if PCB01
   LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
+#define REDLCDLED 3
+#define GREENLCDLED 5
+#define BLUELCDLED 6
 #endif
 
 #if PCB04
   LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
+#define REDLCDLED 3
+#define GREENLCDLED 5
+#define BLUELCDLED 6
 #endif
 
 // RS=4, En=6, db4=11, db5=12, db6=13, db7=14
@@ -138,6 +142,13 @@ unsigned long satSearchTime;
 #define REDLCDLED 5
 #define GREENLCDLED 6
 #define BLUELCDLED 9
+#endif
+
+#if PCB11
+  LiquidCrystal lcd(4, 7, 8, 10, 11, 12); //D8
+#define REDLCDLED 9
+#define GREENLCDLED 6
+#define BLUELCDLED 5
 #endif
 
 
@@ -430,6 +441,11 @@ void updateLcdInt(const byte row, const int number){
 }
 
 void fadeBacklight( int newColor, int oldColor = 0 ) {
+  // beware the PWM and ATMega timers. 
+  // when green and blue are on different pairs, there's flicker.
+  // so v11 of the PCB puts Blue and Green on the same pair.
+  // there might be flicker with Red, but since that never gets mixed in 
+  // except during a transition, it shouldn't really matter.
   if ( newColor == REDCOLOR ) {
     for (int i = 0; i < 255; i++) {
     Adafruit::setBacklight(i, 255-i, 0);
@@ -679,9 +695,10 @@ void setup() {
   pinMode(2, INPUT);
   // pin 13, used for antenna LED
   pinMode(LED_BUILTIN, OUTPUT);
-  // pin 4, used for antenna LED
-  pinMode(4, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
+  // pin 4, used for antenna LED
+  pinMode(A1, OUTPUT);
+  digitalWrite(A1, LOW);
   // pins for RGB LCD colors
   pinMode(REDLCDLED, OUTPUT);
   pinMode(GREENLCDLED, OUTPUT);
@@ -860,10 +877,10 @@ void loop(){
     // update LED. Off with connected antenna, 3 
     if (antennaStatus == 3) {
       digitalWrite(LED_BUILTIN, LOW);
-      digitalWrite(4, LOW);
+      digitalWrite(A1, LOW);
     } else {
       digitalWrite(LED_BUILTIN, HIGH);
-      digitalWrite(4, HIGH);
+      digitalWrite(A1, HIGH);
     } //endif antenna status
   }
 
