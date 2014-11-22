@@ -26,8 +26,8 @@ https://www.gemmagps.com/clock/
 
 #define PCB01 0
 #define PCB04 0
-#define PCB10 1
-#define PCB11 0
+#define PCB10 0
+#define PCB11 1
 
 /* 
  * http://a-control.de/arduino-fehler/?lang=en
@@ -333,7 +333,7 @@ void printDate(time_t currentEpoch) {
   tmElements_t tm;
   // that we "break" into components, like Hour/Minute/Second
   breakTime(currentEpoch, tm);
-  int dateFormat = getDateFormat() ;
+  byte dateFormat = getDateFormat() ;
   // because tm.Year is YYYY - 1970, and we want tmYY + 1970
   int year2k = tmYearToCalendar(tm.Year);
   char szBuf[sizeBuf+1];
