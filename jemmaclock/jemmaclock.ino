@@ -8,9 +8,9 @@ https://www.gemmagps.com/clock/
 
 */
 
-#define JEMMA_VERSION "Jemma Clock v1.1"
+#define JEMMA_VERSION "Jemma Clock v1.2"
 #define JEMMA_COPYRIGHT "(c)Patrick Tudor"
-#define DEBUG 0
+#define DEBUG 1
 
 #ifndef _HEADERS_JEMMA
 #define _HEADERS_JEMMA
@@ -188,13 +188,19 @@ namespace TinyGpsPlusPlus {
 
 namespace Adafruit {
   // https://learn.adafruit.com/character-lcds/rgb-backlit-lcds
-  void setBacklight(uint8_t r, uint8_t g, uint8_t b) {
+  void setBacklight(uint8_t r, uint8_t g, uint8_t b, uint8_t photoTransistorValue) {
     // normalize the red LED - it's brighter than the rest!
+#warning deleteme
+  /* old code
     r = map(r, 0, 255, 0, 100);
     g = map(g, 0, 255, 0, 150);
     b = map(b, 0, 255, 0, 220); // this makes the blue less "deep" so the text is legible
- 
+  */
     // brightness = 255 ; 
+    
+    byte brightnessOffset = 32 * photoTransistorValue; // 0, 1, 2, 3
+    brightness = brightness - brightnessOffset;   // ex 192 - 32*2
+    
     r = map(r, 0, 255, 0, brightness);
     g = map(g, 0, 255, 0, brightness);
     b = map(b, 0, 255, 0, brightness);
@@ -236,9 +242,14 @@ int switchConfMenu = 3;            // flip to enter Configuration menu; before 0
 int switchDaylightTime = A3;        // flip to enable Daylight Time ; before 010 A1
 int switchTwelveHour = A2;               // open for 12 hour time, jumpered for normal time.
 int switchDebug = A3;
+int photoTransistor = A4;      // phototransistor. 4.7K
+byte photoTransistorValue = 0 ;
+byte lastPhotoTransistorValue;
+volatile int valueLightLevel = 0;
 // A4 and A5 for i2c
 byte potentiometerTimezone = 0;     //  input pin for the TimeZone potentiometer // was 6 pre 010
 byte potentiometerBrightness = 7;   // input pin for the Brightness potentiometer
+
 
 #define ANTENNALED A1;
 #if PCB04
@@ -256,6 +267,7 @@ byte showedConfMessage = 0;
 byte inConfMode = 0;
 byte antennaStatus = 3;
 byte satellitesInView = 0;
+byte noFix = 0;
 
 // "A variable should be declared volatile whenever its value can be changed by
 // something beyond the control of the code section in which it appears, such as
@@ -282,7 +294,11 @@ void pps_interrupt(){
       printDate(currentEpoch);
     } else if ( (pps_loop == 10) || (pps_loop == 11) ) {
       if (DEBUG) {
-        displayUptime();
+       // displayUptime();
+               lcd.setCursor(0, 1);
+        lcd.print(F("................"));
+       valueLightLevel = analogRead(photoTransistor);
+        updateLcdInt(1, valueLightLevel);
       }
     } else if ( pps_loop == 12) {
       if (DEBUG) {
@@ -302,7 +318,6 @@ void pps_interrupt(){
 void conf_interrupt(){
   statConfMenu = !statConfMenu;
 }
-
 time_t epochConverter(TinyGPSDate &d, TinyGPSTime &t) {
   // make the object we'll use
   tmElements_t tm;
@@ -448,22 +463,22 @@ void fadeBacklight( int newColor, int oldColor = 0 ) {
   // except during a transition, it shouldn't really matter.
   if ( newColor == REDCOLOR ) {
     for (int i = 0; i < 255; i++) {
-    Adafruit::setBacklight(i, 255-i, 0);
+    Adafruit::setBacklight(i, 255-i, 0, photoTransistorValue);
     TinyGpsPlusPlus::smartDelay(5);}
   }
   if ( newColor == BLUECOLOR ) {
     for (int i = 0; i < 255; i++) {
-    Adafruit::setBacklight(0, 255-(.5 * i ), i); // this blue is 0, 127,255 because without the green it's a deep deep blue
+    Adafruit::setBacklight(0, 255-(.5 * i ), i, photoTransistorValue); // this blue is 0, 127,255 because without the green it's a deep deep blue
     TinyGpsPlusPlus::smartDelay(5); }
   }
   if ( ( newColor == GREENCOLOR ) && (oldColor == REDCOLOR ) ) {
     for (int i = 0; i < 255; i++) {
-    Adafruit::setBacklight(255-i, i, 0);
+    Adafruit::setBacklight(255-i, i, 0, photoTransistorValue);
     TinyGpsPlusPlus::smartDelay(5); }
   }
   if ( ( newColor == GREENCOLOR ) && (oldColor == BLUECOLOR ) ) {
     for (int i = 0; i < 255; i++) {
-    Adafruit::setBacklight(0, (127 + (.5 * i)), 255-i); // blue is already at 127 on the green
+    Adafruit::setBacklight(0, (127 + (.5 * i)), 255-i, photoTransistorValue); // blue is already at 127 on the green
     TinyGpsPlusPlus::smartDelay(5); }
   }
   currentColor = newColor; // used in changeBacklightColor to see if any updates need to happen
@@ -540,11 +555,20 @@ int readTimeZone() {
   return valueTimeZone;
 }
 
+
 int readBrightness() {
   int valueBrightness = readPotentiometer(potentiometerBrightness);
   valueBrightness = map(valueBrightness, 0, 1024, 0, 256);     // scale it to use it with rgb (value between 0 and 255) 
   valueBrightness = constrain(valueBrightness, 0, 255);
   return valueBrightness;
+}
+
+
+int readPhotoTransistor() {
+  valueLightLevel = analogRead(photoTransistor);
+  valueLightLevel = map(valueLightLevel, 0, 1023, 0, 4);     // scale it to use it with rgb (value between 0 and 2) 
+  valueLightLevel = constrain(valueLightLevel, 0, 3);
+  return valueLightLevel;
 }
 
 void saveSettings(const int eepromAddress, const int newValue) {
@@ -636,7 +660,15 @@ void displayBootScreen() {
   lcd.print(F(JEMMA_VERSION));
   lcd.setCursor(0, 1);
   lcd.print(F(JEMMA_COPYRIGHT));
-  delay(1500);
+
+  //delay(1500);  
+  for (int i = 0; i < 15; i++) {
+    noFix = !noFix;
+    digitalWrite(A1, noFix);
+    digitalWrite(LED_BUILTIN, !noFix);
+    delay(100);
+  }
+  noFix=0;
 }
 
 void configurationMenu() {
@@ -651,7 +683,7 @@ void configurationMenu() {
   brightness = readBrightness();
   if ( lastBrightness != brightness) {
     // we're using the setBacklightFunction to refresh the brightness as it changes.
-    Adafruit::setBacklight(255, 0, 0);
+    Adafruit::setBacklight(255, 0, 0, 0);
   }
 
   // read the current time zone from the pot
@@ -716,7 +748,7 @@ void setup() {
   lcd.begin(16, 2);
   // boot backlight is blue, "get" is from eeprom
   brightness = getBrightness() ;
-  Adafruit::setBacklight(0, 127, 255);
+  Adafruit::setBacklight(0, 127, 255, 0);
   // Print bootup screen to LCD.
   displayBootScreen();
 
@@ -869,6 +901,8 @@ void loop(){
         updateLcdText( 0, "                ");
         updateLcdText( 1, "GPS Rx Failure  ");
         TinyGpsPlusPlus::smartDelay(2000);               // wait for two seconds
+        noFix = !noFix;
+        digitalWrite(LED_BUILTIN, noFix);
      }
 
     // pause main loop for a third of a second
@@ -876,12 +910,19 @@ void loop(){
 
     // update LED. Off with connected antenna, 3 
     if (antennaStatus == 3) {
-      digitalWrite(LED_BUILTIN, LOW);
+      //digitalWrite(LED_BUILTIN, LOW);
       digitalWrite(A1, LOW);
     } else {
-      digitalWrite(LED_BUILTIN, HIGH);
+     // digitalWrite(LED_BUILTIN, HIGH);
       digitalWrite(A1, HIGH);
     } //endif antenna status
+  }
+  
+  photoTransistorValue = readPhotoTransistor();
+  if (photoTransistorValue != lastPhotoTransistorValue) {    
+    currentColor = 99;
+    //lastLoopSatsInView = 99 ; // this keeps the LCD red if a ptrans is not present. dislike.
+    lastPhotoTransistorValue = photoTransistorValue;
   }
 
 // check for watchdog timer reset
