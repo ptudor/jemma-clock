@@ -10,7 +10,7 @@ https://www.gemmagps.com/clock/
 
 #define JEMMA_VERSION "Jemma Clock v1.2"
 #define JEMMA_COPYRIGHT "(c)Patrick Tudor"
-#define DEBUG 1
+#define DEBUG 0
 
 #ifndef _HEADERS_JEMMA
 #define _HEADERS_JEMMA
@@ -198,8 +198,8 @@ namespace Adafruit {
   */
     // brightness = 255 ; 
     
-    byte brightnessOffset = 32 * photoTransistorValue; // 0, 1, 2, 3
-    brightness = brightness - brightnessOffset;   // ex 192 - 32*2
+   //12 byte brightnessOffset = 32 * photoTransistorValue; // 0, 1, 2, 3
+   //12 brightness = brightness - brightnessOffset;   // ex 192 - 32*2
     
     r = map(r, 0, 255, 0, brightness);
     g = map(g, 0, 255, 0, brightness);
@@ -920,7 +920,7 @@ void loop(){
   
   photoTransistorValue = readPhotoTransistor();
   if (photoTransistorValue != lastPhotoTransistorValue) {    
-    currentColor = 99;
+    //currentColor = 99;
     //lastLoopSatsInView = 99 ; // this keeps the LCD red if a ptrans is not present. dislike.
     lastPhotoTransistorValue = photoTransistorValue;
   }

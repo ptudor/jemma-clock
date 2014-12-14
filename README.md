@@ -1,6 +1,8 @@
 jemma-clock
 ===========
 
+[Buy this assembled](https://www.tindie.com/products/ptudor/jemma-clock/) at Tindie or send me an email.
+
 An Arduino based Pulse-Per-Second clock with Time Zones and Daylight Time support
 
 ## Software Prerequisites
