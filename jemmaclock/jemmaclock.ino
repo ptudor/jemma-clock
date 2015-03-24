@@ -28,6 +28,8 @@ https://www.gemmagps.com/clock/
 #define PCB04 0
 #define PCB10 0
 #define PCB11 1
+#define TZ_SHORT 1
+#define TZ_VERBOSE 0
 
 /* 
  * http://a-control.de/arduino-fehler/?lang=en
@@ -52,6 +54,53 @@ namespace TimeZoneList {
    char   *tzname;    // "UTC-8 Pacific"
   } Timezones;
 
+#if TZ_SHORT
+ static const Timezones tzlist[40] = {
+      { 0, -43200, "UTC-12"},            // Y
+      { 1, -39600, "UTC-11"},            // X
+      { 2, -36000, "UTC-10 Honolulu"},   // W
+      { 3, -34200, "UTC-9:30"},          // V+
+      { 4, -32400, "UTC-9 Anchorage"},   // V
+      { 5, -28800, "UTC-8 Tijuana"},     // U
+      { 6, -25200, "UTC-7 Denver"},      // T
+      { 7, -21600, "UTC-6 Chicago"},     // S
+      { 8, -18000, "UTC-5 New York"},    // R
+      { 9, -16200, "UTC-4:30"},          // Q+
+      {10, -14400, "UTC-4 Virgin Is."},  // Q
+      {11, -12600, "UTC-3:30"},          // P+
+      {12, -10800, "UTC-3"},             // P
+      {13, -7200,  "UTC-2"},             // O
+      {14, -3600,  "UTC-1"},      // N Azores
+      {15, 0,      "UTC London"},        // Z ±0
+      {16, 3600,   "UTC+1"},      // A Berlin
+      {17, 7200,   "UTC+2"},       // B Cairo
+      {18, 10800,  "UTC+3"},     // C Baghdad
+      {19, 12600,  "UTC+3:30"},   // C+ Tehran
+      {20, 14400,  "UTC+4"},      // D Moscow
+      {21, 16200,  "UTC+4:30"},    // D+Kabul
+      {22, 18000,  "UTC+5"},     // E Karachi
+      {23, 19800,  "UTC+5:30"},    // E+ Delhi
+      {24, 20700,  "UTC+5:45"},    // E+ Nepal
+      {25, 21600,  "UTC+6"},             // F
+      {26, 23400,  "UTC+6:30"},          // F+
+      {27, 25200,  "UTC+7"},     // G Jakarta
+      {28, 28800,  "UTC+8"},       // H Perth
+      {29, 31500,  "UTC+8:45"},    // H+ Eucla
+      {30, 32400,  "UTC+9"},             // I Tokyo
+      {31, 34200,  "UTC+9:30"},          // I+ "Adelaide" doesn't fit well.
+      {32, 36000,  "UTC+10 Canberra"},   // K
+      {33, 37800,  "UTC+10:30"},         // K+
+      {34, 39600,  "UTC+11"},            // L
+      {35, 41400,  "UTC+11:30"},         // L+
+      {36, 43200,  "UTC+12"},            // M Auckland
+      {37, 45900,  "UTC+12:45"},         // M+
+      {38, 46800,  "UTC+13"},            // M+
+      {39, 50400,  "UTC+14"},            // M+
+    };
+#endif
+  
+  
+#if TZ_VERBOSE
  static const Timezones tzlist[40] = {
       { 0, -43200, "UTC-12"},            // Y
       { 1, -39600, "UTC-11"},            // X
@@ -94,7 +143,8 @@ namespace TimeZoneList {
       {38, 46800,  "UTC+13"},            // M+
       {39, 50400,  "UTC+14"},            // M+
     };
-  
+#endif
+
 } // end timezone
 
 
@@ -169,6 +219,11 @@ TinyGPSCustom antenna(gps, "PGTOP", 2); // $PGTOP sentence, 2nd element
 #define PA6H_MESSAGES_DEFAULT "$PMTK314,-1*04"
 #define PA6H_MESSAGES "$PMTK314,3,1,3,1,2,6,0,0,0,0,0,0,0,0,0,0,0,0,0*2C"
 #define PA6H_ANTENNA_STATUS "$PGCMD,33,1*6C" 
+// enables SBAS search with PMTK_API_SET_SBAS_ENABLED, 0 off 1 on
+#define PA6H_SBAS_ENABLE "$PMTK313,1*2E" 
+// enables FAA WAAS with PMTK_API_SET_DGPS_MODE, 0 off, 1 RTCM, 2 WAAS
+#define PA6H_WAAS_ENABLE "$PMTK301,2*2E" 
+
 static const uint16_t GPSBaud = 9600;
 
 
@@ -719,6 +774,7 @@ void configurationMenu() {
 }
 
 void setup() {
+
   // eight second watchdog timer
   wdt_enable(WDTO_8S);
 
@@ -764,7 +820,11 @@ void setup() {
     delay(100);
     Serial.println(PA6H_MESSAGES);
     delay(100);
-    Serial.println(PA6H_ANTENNA_STATUS);  //softwareserial
+    Serial.println(PA6H_SBAS_ENABLE);
+    delay(100);
+    Serial.println(PA6H_WAAS_ENABLE);
+    delay(100);
+    Serial.println(PA6H_ANTENNA_STATUS);
     #endif
 //  }
 
@@ -905,8 +965,8 @@ void loop(){
         digitalWrite(LED_BUILTIN, noFix);
      }
 
-    // pause main loop for a third of a second
-    TinyGpsPlusPlus::smartDelay(353);               
+    // pause main loop for a fifth of a second
+    TinyGpsPlusPlus::smartDelay(199);               
 
     // update LED. Off with connected antenna, 3 
     if (antennaStatus == 3) {
