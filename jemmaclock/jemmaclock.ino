@@ -20,7 +20,7 @@ https://www.gemmagps.com/clock/
 #include <LiquidCrystal.h>
 #include <TinyGPS++.h>
 #include <avr/wdt.h> // watchdog timer
-#include "freeram.h"
+//#include "freeram.h"
 
 #endif
 
@@ -300,6 +300,7 @@ int switchDebug = A3;
 int photoTransistor = A4;      // phototransistor. 4.7K
 byte photoTransistorValue = 0 ;
 byte lastPhotoTransistorValue;
+byte lastPulseValue = 0;
 volatile int valueLightLevel = 0;
 // A4 and A5 for i2c
 byte potentiometerTimezone = 0;     //  input pin for the TimeZone potentiometer // was 6 pre 010
@@ -330,17 +331,26 @@ byte noFix = 0;
 // likely to occur is in sections of code associated with interrupts, called
 // an interrupt service routine."
 
+volatile time_t currentEpoch;
 volatile byte pps_loop = 0;
 void pps_interrupt(){
   // if we're not in the configuration menu and we have a good fix,
   if ( (!statConfMenu) && (gps.time.isValid()) )   {
-    time_t currentEpoch;
+//    time_t currentEpoch;
+/*
     //convert GPS time to Epoch time
     currentEpoch =  epochConverter(gps.date, gps.time);
     // and display it on the LCD
     printTime(currentEpoch);
+    
+    */
+    
     // this counter is for information on the second line of the LCD.
     pps_loop++;
+    if ( pps_loop > 12) {
+        pps_loop = 1;
+    }
+    /*
     if (pps_loop < 8) {
       // update the LCD with "Sats in View: 06" or similar
       printSats(satellitesInView); 
@@ -364,6 +374,7 @@ void pps_interrupt(){
     } else  {
       pps_loop = 0;
     }
+    */
   } else  {
     // silently pass if we're in configuration mode or have no nmea data
     true; 
@@ -704,10 +715,11 @@ void eepromCreateDefaults() {
 }
 
 void clearScreen() {
-  lcd.setCursor(0, 0);
-  lcd.print(F("                "));
-  lcd.setCursor(0, 1);
-  lcd.print(F("                "));
+  lcd.clear();
+//  lcd.setCursor(0, 0);
+//  lcd.print(F("                "));
+//  lcd.setCursor(0, 1);
+//  lcd.print(F("                "));
 }
 
 void displayBootScreen() {
@@ -890,6 +902,8 @@ void loop(){
       // finally reset what brought us here
       inConfMode = 0;
     }
+    
+    
     // first set the backlight color based on number of satellites
     if (gps.satellites.isValid()) { // true even with zero satellites, as in, true with NMEA sentences coming in
       satellitesInView = gps.satellites.value();
@@ -909,6 +923,41 @@ void loop(){
       // save the current count so we can skip the loop next time
       lastLoopSatsInView = satellitesInView;
 
+//if (pps_loop > 0) {
+if (pps_loop != lastPulseValue) {
+    //convert GPS time to Epoch time
+    currentEpoch =  epochConverter(gps.date, gps.time);
+    // and display it on the LCD
+    printTime(currentEpoch);
+
+
+  // moving from interrupt to loop
+    if (pps_loop < 8) {
+      // update the LCD with "Sats in View: 06" or similar
+      printSats(satellitesInView); 
+    } else if ( (pps_loop == 8) || (pps_loop == 9) ) {
+      // updated LCD with year/month/day
+      printDate(currentEpoch);
+    } else if ( (pps_loop == 10) || (pps_loop == 11) ) {
+      if (DEBUG) {
+       // displayUptime();
+               lcd.setCursor(0, 1);
+        lcd.print(F("................"));
+       valueLightLevel = analogRead(photoTransistor);
+        updateLcdInt(1, valueLightLevel);
+      }
+    } else if ( pps_loop == 13) { // 13 is impossible, delete me.
+      clearScreen();
+      if (DEBUG) {
+        lcd.setCursor(0, 1);
+        lcd.print(F("................"));
+        //updateLcdInt(1, freeRam());
+      }
+    }
+        lastPulseValue = pps_loop;
+
+}
+    
       // this section updates the LCD if there isn't PPS.
       // otherwise, LCD updates happen from PPS so there aren't locking problems.
       if ( (satellitesInView == 2) || (satellitesInView == 3) ) {
@@ -965,8 +1014,8 @@ void loop(){
         digitalWrite(LED_BUILTIN, noFix);
      }
 
-    // pause main loop for a fifth of a second
-    TinyGpsPlusPlus::smartDelay(199);               
+    // pause main loop for a 20th of a second
+    TinyGpsPlusPlus::smartDelay(49);               
 
     // update LED. Off with connected antenna, 3 
     if (antennaStatus == 3) {
