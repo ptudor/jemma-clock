@@ -3,12 +3,12 @@
 Jemma Clock for Arduino
 MIT License
 
-Copyright (c) 2014 Patrick Tudor
+Copyright (c) 2015 Patrick Tudor
 https://www.gemmagps.com/clock/
 
 */
 
-#define JEMMA_VERSION "Jemma Clock v1.2"
+#define JEMMA_VERSION "Jemma Clock v1.3"
 #define JEMMA_COPYRIGHT "(c)Patrick Tudor"
 #define DEBUG 0
 
