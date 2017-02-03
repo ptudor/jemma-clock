@@ -15,7 +15,7 @@ https://www.gemmagps.com/clock/
 #ifndef _HEADERS_JEMMA
 #define _HEADERS_JEMMA
 
-#include <Time.h>
+#include <TimeLib.h>
 #include <EEPROM.h>
 #include <LiquidCrystal.h>
 #include <TinyGPS++.h>
